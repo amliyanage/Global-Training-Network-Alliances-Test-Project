@@ -21,7 +21,7 @@ export class CartController {
         userId: (req as any).user._id,
         serviceId,
         slotId,
-        quantity
+        quantity,
       });
       res.status(200).json(cart);
     } catch (error) {
@@ -35,7 +35,7 @@ export class CartController {
       const cart = await this.cartService.updateItem({
         userId: (req as any).user._id,
         itemId: req.params.itemId as string,
-        quantity
+        quantity,
       });
       res.status(200).json(cart);
     } catch (error) {
@@ -47,7 +47,7 @@ export class CartController {
     try {
       const cart = await this.cartService.removeItem({
         userId: (req as any).user._id,
-        itemId: req.params.itemId as string
+        itemId: req.params.itemId as string,
       });
       res.status(200).json(cart);
     } catch (error) {

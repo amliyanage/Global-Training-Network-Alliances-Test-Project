@@ -6,7 +6,7 @@ import { AddCartItemDto, UpdateCartItemDto, RemoveCartItemDto } from '../dtos/ca
 export class CartService {
   constructor(
     private cartRepository: CartRepository,
-    private serviceRepository: ServiceRepository
+    private serviceRepository: ServiceRepository,
   ) {}
 
   async getCart(userId: string) {
@@ -32,7 +32,7 @@ export class CartService {
     }
 
     const existingItemIndex = cart.items.findIndex(
-      (i: any) => i.serviceId.toString() === serviceId && i.slotId.toString() === slotId
+      (i: any) => i.serviceId.toString() === serviceId && i.slotId.toString() === slotId,
     );
 
     if (existingItemIndex > -1) {

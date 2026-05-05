@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import { errorHandler } from './middleware/errorHandler';
 import serviceRoutes from './routes/service.routes';
 import cartRoutes from './routes/cart.routes';
+import bookingRoutes from './routes/booking.routes';
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/services', serviceRoutes);
 app.use('/cart', cartRoutes);
+app.use('/bookings', bookingRoutes);
 
 app.use(errorHandler);
 
