@@ -20,8 +20,7 @@ class Database {
     }
 
     try {
-      const mongoURI =
-        process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mentecart';
+      const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mentecart';
       await mongoose.connect(mongoURI);
       this.isConnected = true;
       console.log('MongoDB connected successfully');

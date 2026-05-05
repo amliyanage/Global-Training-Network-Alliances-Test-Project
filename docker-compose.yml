@@ -1,5 +1,5 @@
 services:
-  mongodb:
+  mongo:
     image: mongo:latest
     container_name: mentecart-mongodb
     ports:
@@ -18,33 +18,73 @@ services:
     image: mongo:latest
     container_name: mentecart-mongo-init
     depends_on:
-      mongodb:
-        condition: service_started
+      mongo:
+        condition: service_healthy # wait until MongoDB is healthy, not just started
     restart: 'no'
     entrypoint: >
       bash -c "
-        sleep 3 &&
-        mongosh --host mongodb:27017 --quiet --eval '
-          try { rs.status() } catch(e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) }
+        mongosh --host mongo:27017 --quiet --eval '
+          try { rs.status() } catch(e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongo:27017\" }] }) }
         ' &&
         echo 'Replica set initialized'
       "
 
-  backend:
-    build: .
-    container_name: mentecart-backend
+  # ── Development service (hot-reload via nodemon + tsx) ──────────────────────
+  backend-dev:
+    build:
+      context: .
+      target: dev
+    container_name: mentecart-backend-dev
     ports:
-      - '3001:3000'
+      - '6000:6000'
+    volumes:
+      - ./src:/app/src # live-reload source changes
+      - ./tsconfig.json:/app/tsconfig.json
     depends_on:
-      mongodb:
+      mongo:
         condition: service_healthy
       mongo-init:
         condition: service_completed_successfully
     environment:
-      - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/mentecart?replicaSet=rs0
+      - PORT=6000
+      - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
       - JWT_SECRET=mentecart_secret_key_123
       - JWT_EXPIRES_IN=24h
+
+  # ── Production service (compiled dist) ─────────────────────────────────────
+  backend:
+    build:
+      context: .
+      target: prod
+    container_name: mentecart-backend
+    ports:
+      - '6001:6000'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      - PORT=6000
+      - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
+      - JWT_SECRET=mentecart_secret_key_123
+      - JWT_EXPIRES_IN=24h
+
+  # ── Database Preview (Mongo Express) ───────────────────────────────────────
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mentecart-mongo-express
+    ports:
+      - '6060:8081'
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      mongo:
+        condition: service_healthy
 
 volumes:
   mongodb_data:
