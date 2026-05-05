@@ -32,4 +32,9 @@ export class ServiceRepository {
       { session },
     );
   }
+
+  async findById(id: string, session?: mongoose.ClientSession) {
+    if (session) return Service.findById(id).session(session);
+    return Service.findById(id);
+  }
 }

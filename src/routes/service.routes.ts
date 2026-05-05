@@ -10,5 +10,6 @@ const catalogService = new CatalogService(serviceRepository);
 const serviceController = new ServiceController(catalogService);
 
 router.get('/', serviceController.getServices.bind(serviceController));
+router.get('/:id', serviceController.getServiceById.bind(serviceController));
 
 export default router;

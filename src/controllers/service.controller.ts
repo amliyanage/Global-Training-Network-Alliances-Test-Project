@@ -17,4 +17,13 @@ export class ServiceController {
       next(error);
     }
   }
+
+  async getServiceById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await this.catalogService.getServiceById(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

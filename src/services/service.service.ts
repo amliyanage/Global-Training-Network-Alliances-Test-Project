@@ -1,5 +1,6 @@
 import { GetServicesFilterDto } from '../dtos/service.dto';
 import { ServiceRepository } from '../repositories/service.repository';
+import { AppError } from '../utils/errors';
 
 export class CatalogService {
   constructor(private serviceRepository: ServiceRepository) {}
@@ -25,5 +26,13 @@ export class CatalogService {
       page,
       limit,
     };
+  }
+
+  async getServiceById(id: string) {
+    const service = await this.serviceRepository.findById(id);
+    if (!service) {
+      throw new AppError(404, 'Service not found', 'NOT_FOUND');
+    }
+    return service;
   }
 }

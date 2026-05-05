@@ -123,6 +123,25 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/:id",
+              "host": ["{{base_url}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service_id_here"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     }
