@@ -24,4 +24,12 @@ export class AuthController {
       next(error);
     }
   }
+
+  async me(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(200).json({ user: (req as any).user });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
