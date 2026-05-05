@@ -1,7 +1,7 @@
 import type { UserRepository } from '../repositories/user.repository';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import type { RegisterDto } from '../dtos/auth.dto';
+import type { LoginDto, RegisterDto } from '../dtos/auth.dto';
 import { AppError } from '../utils/errors';
 
 export class AuthService {
@@ -18,6 +18,22 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(passwordPlain, saltRounds);
 
     const user = await this.userRepository.create({ email, passwordHash });
+    const token = this.generateToken(user.id);
+    return { user: { id: user.id, email: user.email }, token };
+  }
+
+  async login(dto: LoginDto) {
+    const { email, passwordPlain } = dto;
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new AppError(401, 'Invalid credentials', 'UNAUTHORIZED');
+    }
+
+    const isMatch = await bcrypt.compare(passwordPlain, user.passwordHash);
+    if (!isMatch) {
+      throw new AppError(401, 'Invalid credentials', 'UNAUTHORIZED');
+    }
+
     const token = this.generateToken(user.id);
     return { user: { id: user.id, email: user.email }, token };
   }

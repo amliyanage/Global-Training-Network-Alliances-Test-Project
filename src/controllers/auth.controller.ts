@@ -14,4 +14,14 @@ export class AuthController {
       next(error);
     }
   }
+
+  async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      const result = await this.authService.login({ email, passwordPlain: password });
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
