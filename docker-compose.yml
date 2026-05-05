@@ -1,0 +1,50 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mentecart-mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    healthcheck:
+      test: mongosh --port 27017 --quiet --eval "db.hello().isWritablePrimary || db.isMaster().ismaster"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  mongo-init:
+    image: mongo:latest
+    container_name: mentecart-mongo-init
+    depends_on:
+      mongodb:
+        condition: service_started
+    restart: 'no'
+    entrypoint: >
+      bash -c "
+        sleep 3 &&
+        mongosh --host mongodb:27017 --quiet --eval '
+          try { rs.status() } catch(e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] }) }
+        ' &&
+        echo 'Replica set initialized'
+      "
+
+  backend:
+    build: .
+    container_name: mentecart-backend
+    ports:
+      - '3001:3000'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/mentecart?replicaSet=rs0
+      - JWT_SECRET=mentecart_secret_key_123
+      - JWT_EXPIRES_IN=24h
+
+volumes:
+  mongodb_data:
