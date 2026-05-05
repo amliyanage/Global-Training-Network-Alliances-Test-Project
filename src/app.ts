@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import authRoutes from './routes/auth.routes';
 import { errorHandler } from './middleware/errorHandler';
+import serviceRoutes from './routes/service.routes';
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/services', serviceRoutes);
 
 app.use(errorHandler);
 
