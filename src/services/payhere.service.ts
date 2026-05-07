@@ -28,6 +28,7 @@ interface PayHereConfig {
   returnUrl: string;
   cancelUrl: string;
   currency: string;
+  sandbox: boolean;
   checkoutUrl: string;
 }
 
@@ -81,6 +82,7 @@ export class PayHereService {
       returnUrl,
       cancelUrl,
       currency,
+      sandbox,
       checkoutUrl,
     };
   }
@@ -107,6 +109,7 @@ export class PayHereService {
     );
 
     const payload = {
+      sandbox: config.sandbox,
       merchant_id: config.merchantId,
       return_url: config.returnUrl,
       cancel_url: config.cancelUrl,

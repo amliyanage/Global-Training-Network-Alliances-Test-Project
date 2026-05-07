@@ -55,6 +55,10 @@ export class BookingService {
     return Number(amount).toFixed(2);
   }
 
+  private generatePaymentOrderId(bookingId: string): string {
+    return `ORD_${Date.now()}_${bookingId}`;
+  }
+
   async checkout(dto: CheckoutDto) {
     const { userId, paymentMethod } = dto;
     if (paymentMethod === 'online') {
@@ -136,7 +140,7 @@ export class BookingService {
       });
 
       if (isOnlinePayment) {
-        booking.paymentOrderId = `BKG-${booking._id.toString()}`;
+        booking.paymentOrderId = this.generatePaymentOrderId(booking._id.toString());
       }
 
       await this.bookingRepository.save(booking, session);
@@ -259,12 +263,21 @@ export class BookingService {
       if (statusCode === 2) {
         // Guard transition: terminal booking statuses should not be downgraded.
         if (!['cancelled', 'failed', 'completed'].includes(booking.status)) {
-          booking.status = 'confirmed';
+          booking.status = 'success';
         }
 
         booking.paymentStatus = 'paid';
         booking.paymentVerifiedAt = booking.paymentVerifiedAt || new Date();
         booking.capacityReleasedOnFailure = false;
+
+        const userId = booking.user?.toString();
+        if (userId) {
+          const cart: any = await this.cartRepository.findByUserId(userId, session);
+          if (cart && cart.items.length > 0) {
+            cart.items = [];
+            await this.cartRepository.save(cart, session);
+          }
+        }
       } else if ([-1, -2, -3].includes(statusCode)) {
         if (booking.status === 'cancelled') {
           booking.paymentStatus = 'cancelled';
@@ -317,7 +330,7 @@ export class BookingService {
       );
       if (!booking) throw new AppError(404, 'Booking not found');
 
-      if (['completed', 'failed', 'cancelled'].includes(booking.status)) {
+      if (['success', 'completed', 'failed', 'cancelled'].includes(booking.status)) {
         throw new AppError(400, `Cannot cancel booking with status ${booking.status}`);
       }
 

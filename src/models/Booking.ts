@@ -10,7 +10,7 @@ export interface IBooking extends Document {
     priceSnapshot: number;
   }[];
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'failed';
+  status: 'pending' | 'confirmed' | 'success' | 'completed' | 'cancelled' | 'failed';
   paymentMethod: 'cash' | 'pay_on_arrival' | 'online';
   paymentStatus: 'not_required' | 'pending' | 'paid' | 'failed' | 'cancelled';
   paymentGateway?: 'payhere';
@@ -49,7 +49,7 @@ const BookingSchema: Schema = new Schema(
     totalAmount: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'completed', 'cancelled', 'failed'],
+      enum: ['pending', 'confirmed', 'success', 'completed', 'cancelled', 'failed'],
       default: 'pending',
     },
     paymentMethod: { type: String, enum: ['cash', 'pay_on_arrival', 'online'], required: true },

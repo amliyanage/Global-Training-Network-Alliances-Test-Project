@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc && tsc-alias",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run build && node --test dist/tests/*.test.js",
     "start": "node dist/server.js",
     "format": "prettier --write ."
   },
