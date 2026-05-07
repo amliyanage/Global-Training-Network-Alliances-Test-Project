@@ -2,6 +2,7 @@ export interface AddCartItemDto {
   userId: string;
   serviceId: string;
   slotId: string;
+  bookingDate: string;
   quantity: number;
 }
 

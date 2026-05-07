@@ -5,6 +5,7 @@ export interface IBooking extends Document {
   items: {
     serviceId: mongoose.Types.ObjectId;
     slotId: string;
+    bookingDate?: Date;
     quantity: number;
     priceSnapshot: number;
   }[];
@@ -18,6 +19,7 @@ export interface IBooking extends Document {
 const BookingItemSchema = new Schema({
   serviceId: { type: Schema.Types.ObjectId, ref: 'Service', required: true },
   slotId: { type: String, required: true },
+  bookingDate: { type: Date },
   quantity: { type: Number, required: true },
   priceSnapshot: { type: Number, required: true },
 });

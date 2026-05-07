@@ -99,7 +99,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/services?page=1&limit=10&category=IT&title=Consulting",
+              "raw": "{{base_url}}/services?page=1&limit=10&category=Cleaning&title=Cleaning",
               "host": ["{{base_url}}"],
               "path": ["services"],
               "query": [
@@ -113,11 +113,11 @@
                 },
                 {
                   "key": "category",
-                  "value": "IT"
+                  "value": "Cleaning"
                 },
                 {
                   "key": "title",
-                  "value": "Consulting"
+                  "value": "Cleaning"
                 }
               ]
             }
@@ -130,9 +130,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/services/:id",
+              "raw": "{{base_url}}/services/:id?bookingDate={{booking_date}}",
               "host": ["{{base_url}}"],
               "path": ["services", ":id"],
+              "query": [
+                {
+                  "key": "bookingDate",
+                  "value": "{{booking_date}}"
+                }
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -188,7 +194,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"serviceId\": \"service_id_here\",\n    \"slotId\": \"slot_id_here\",\n    \"quantity\": 1\n}",
+              "raw": "{\n    \"serviceId\": \"service_id_here\",\n    \"slotId\": \"slot_id_here\",\n    \"bookingDate\": \"{{booking_date}}\",\n    \"quantity\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -292,7 +298,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"paymentMethod\": \"STRIPE\"\n}",
+              "raw": "{\n    \"paymentMethod\": \"online\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -300,9 +306,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/booking/checkout",
+              "raw": "{{base_url}}/bookings/checkout",
               "host": ["{{base_url}}"],
-              "path": ["booking", "checkout"]
+              "path": ["bookings", "checkout"]
             }
           },
           "response": []
@@ -323,9 +329,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/booking",
+              "raw": "{{base_url}}/bookings",
               "host": ["{{base_url}}"],
-              "path": ["booking"]
+              "path": ["bookings"]
             }
           },
           "response": []
@@ -346,9 +352,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/booking/:id",
+              "raw": "{{base_url}}/bookings/:id",
               "host": ["{{base_url}}"],
-              "path": ["booking", ":id"],
+              "path": ["bookings", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -375,9 +381,9 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/booking/:id/cancel",
+              "raw": "{{base_url}}/bookings/:id/cancel",
               "host": ["{{base_url}}"],
-              "path": ["booking", ":id", "cancel"],
+              "path": ["bookings", ":id", "cancel"],
               "variable": [
                 {
                   "key": "id",
@@ -400,6 +406,11 @@
     {
       "key": "auth_token",
       "value": "your_token_here",
+      "type": "string"
+    },
+    {
+      "key": "booking_date",
+      "value": "2026-05-08",
       "type": "string"
     }
   ]

@@ -4,3 +4,8 @@ export interface GetServicesFilterDto {
   category?: string;
   title?: string;
 }
+
+export interface GetServiceByIdDto {
+  id: string;
+  bookingDate?: string;
+}

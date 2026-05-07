@@ -1,6 +1,7 @@
-import { GetServicesFilterDto } from '../dtos/service.dto';
+import { GetServiceByIdDto, GetServicesFilterDto } from '../dtos/service.dto';
 import { ServiceRepository } from '../repositories/service.repository';
 import { AppError } from '../utils/errors';
+import { getUtcDateKey } from '../utils/date';
 
 export class CatalogService {
   constructor(private serviceRepository: ServiceRepository) {}
@@ -28,11 +29,21 @@ export class CatalogService {
     };
   }
 
-  async getServiceById(id: string) {
+  async getServiceById(dto: GetServiceByIdDto) {
+    const { id, bookingDate } = dto;
     const service = await this.serviceRepository.findById(id);
     if (!service) {
       throw new AppError(404, 'Service not found', 'NOT_FOUND');
     }
-    return service;
+
+    if (!bookingDate) return service;
+
+    const serviceObject = service.toObject() as any;
+    serviceObject.slots = serviceObject.slots.filter(
+      (slot: any) =>
+        getUtcDateKey(new Date(slot.startTime)) === bookingDate && Number(slot.capacity) > 0,
+    );
+
+    return serviceObject;
   }
 }

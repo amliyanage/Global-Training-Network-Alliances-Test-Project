@@ -4,6 +4,7 @@ import { CartRepository } from '../repositories/cart.repository';
 import { ServiceRepository } from '../repositories/service.repository';
 import { AppError } from '../utils/errors';
 import { CheckoutDto, BookingActionDto } from '../dtos/booking.dto';
+import { getUtcDateKey } from '../utils/date';
 
 export class BookingService {
   constructor(
@@ -33,6 +34,12 @@ export class BookingService {
 
         const slot = service.slots.find((s: any) => s._id?.toString() === item.slotId);
         if (!slot) throw new AppError(404, `Slot not found in service: ${service.title}`);
+        const bookingDate = item.bookingDate ? new Date(item.bookingDate) : new Date(slot.startTime);
+        const cartItemDate = getUtcDateKey(bookingDate);
+        const slotDate = getUtcDateKey(new Date(slot.startTime));
+        if (cartItemDate !== slotDate) {
+          throw new AppError(409, `Selected slot date changed for ${service.title}. Please refresh cart.`);
+        }
 
         if (slot.capacity < item.quantity) {
           throw new AppError(
@@ -61,6 +68,7 @@ export class BookingService {
         bookingItems.push({
           serviceId: service._id,
           slotId: item.slotId,
+          bookingDate,
           quantity: item.quantity,
           priceSnapshot: service.price,
         });

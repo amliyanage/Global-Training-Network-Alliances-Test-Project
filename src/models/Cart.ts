@@ -4,6 +4,7 @@ export interface ICartItem {
   _id?: string | mongoose.Types.ObjectId;
   serviceId: mongoose.Types.ObjectId;
   slotId: string;
+  bookingDate?: Date;
   quantity: number;
 }
 
@@ -15,6 +16,7 @@ export interface ICart extends Document {
 const CartItemSchema = new Schema({
   serviceId: { type: Schema.Types.ObjectId, ref: 'Service', required: true },
   slotId: { type: String, required: true },
+  bookingDate: { type: Date },
   quantity: { type: Number, required: true, min: 1, default: 1 },
 });
 

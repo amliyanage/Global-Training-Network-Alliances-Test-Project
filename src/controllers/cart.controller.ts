@@ -16,11 +16,12 @@ export class CartController {
 
   async addItem(req: Request, res: Response, next: NextFunction) {
     try {
-      const { serviceId, slotId, quantity } = addItemSchema.parse(req.body);
+      const { serviceId, slotId, bookingDate, quantity } = addItemSchema.parse(req.body);
       const cart = await this.cartService.addItem({
         userId: (req as any).user._id,
         serviceId,
         slotId,
+        bookingDate,
         quantity,
       });
       res.status(200).json(cart);

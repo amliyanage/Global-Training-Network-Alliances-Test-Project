@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ITimeSlot {
   _id?: string | mongoose.Types.ObjectId;
   startTime: Date;
+  endTime: Date;
   capacity: number;
 }
 
@@ -19,6 +20,7 @@ export interface IService extends Document {
 
 const TimeSlotSchema = new Schema({
   startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },
   capacity: { type: Number, required: true, min: 0 },
 });
 

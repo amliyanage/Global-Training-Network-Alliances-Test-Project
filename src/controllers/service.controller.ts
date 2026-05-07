@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { CatalogService } from '../services/service.service';
+import { serviceDateQuerySchema } from '../validators/service.validator';
 
 export class ServiceController {
   constructor(private catalogService: CatalogService) {}
@@ -20,7 +21,11 @@ export class ServiceController {
 
   async getServiceById(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await this.catalogService.getServiceById(req.params.id as string);
+      const { bookingDate } = serviceDateQuerySchema.parse(req.query);
+      const result = await this.catalogService.getServiceById({
+        id: req.params.id as string,
+        bookingDate,
+      });
       res.status(200).json(result);
     } catch (error) {
       next(error);
