@@ -50,6 +50,13 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
       - JWT_SECRET=mentecart_secret_key_123
       - JWT_EXPIRES_IN=24h
+      - PAYHERE_SANDBOX=${PAYHERE_SANDBOX:-true}
+      - PAYHERE_MERCHANT_ID=${PAYHERE_MERCHANT_ID:-1211142}
+      - PAYHERE_MERCHANT_SECRET=${PAYHERE_MERCHANT_SECRET:-replace_with_your_merchant_secret}
+      - PAYHERE_NOTIFY_URL=${PAYHERE_NOTIFY_URL:-https://your-public-domain.com/bookings/payhere/notify}
+      - PAYHERE_RETURN_URL=${PAYHERE_RETURN_URL:-https://your-frontend.com/payment/return}
+      - PAYHERE_CANCEL_URL=${PAYHERE_CANCEL_URL:-https://your-frontend.com/payment/cancel}
+      - PAYHERE_CURRENCY=${PAYHERE_CURRENCY:-LKR}
 
   # ── Production service (compiled dist) ─────────────────────────────────────
   backend:
@@ -69,6 +76,13 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
       - JWT_SECRET=mentecart_secret_key_123
       - JWT_EXPIRES_IN=24h
+      - PAYHERE_SANDBOX=${PAYHERE_SANDBOX:-true}
+      - PAYHERE_MERCHANT_ID=${PAYHERE_MERCHANT_ID:-1211142}
+      - PAYHERE_MERCHANT_SECRET=${PAYHERE_MERCHANT_SECRET:-replace_with_your_merchant_secret}
+      - PAYHERE_NOTIFY_URL=${PAYHERE_NOTIFY_URL:-https://your-public-domain.com/bookings/payhere/notify}
+      - PAYHERE_RETURN_URL=${PAYHERE_RETURN_URL:-https://your-frontend.com/payment/return}
+      - PAYHERE_CANCEL_URL=${PAYHERE_CANCEL_URL:-https://your-frontend.com/payment/cancel}
+      - PAYHERE_CURRENCY=${PAYHERE_CURRENCY:-LKR}
 
   # ── Database Preview (Mongo Express) ───────────────────────────────────────
   mongo-express:

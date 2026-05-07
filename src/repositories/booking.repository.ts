@@ -5,8 +5,18 @@ export class BookingRepository {
   async findByUserId(userId: string) {
     return Booking.find({ user: userId }).sort({ createdAt: -1 });
   }
+  async findById(id: string, session?: mongoose.ClientSession) {
+    const query = Booking.findById(id);
+    if (session) return query.session(session);
+    return query;
+  }
   async findByIdAndUserId(bookingId: string, userId: string, session?: mongoose.ClientSession) {
     const query = Booking.findOne({ _id: bookingId, user: userId });
+    if (session) return query.session(session);
+    return query;
+  }
+  async findByPaymentOrderId(paymentOrderId: string, session?: mongoose.ClientSession) {
+    const query = Booking.findOne({ paymentOrderId });
     if (session) return query.session(session);
     return query;
   }

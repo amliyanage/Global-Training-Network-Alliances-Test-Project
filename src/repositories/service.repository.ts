@@ -17,7 +17,7 @@ export class ServiceRepository {
     return Service.findOneAndUpdate(
       { _id: serviceId, 'slots._id': slotId, 'slots.capacity': { $gte: quantity } },
       { $inc: { 'slots.$.capacity': -quantity } },
-      { session, new: true },
+      { session, returnDocument: 'after' },
     );
   }
   async incrementCapacity(
