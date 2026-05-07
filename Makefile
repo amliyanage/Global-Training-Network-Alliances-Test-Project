@@ -1,4 +1,4 @@
-.PHONY: dev up down shell log build
+.PHONY: dev up down shell log build seed-clear
 
 # Development: hot-reload via nodemon + tsx inside Docker
 dev:
@@ -26,3 +26,6 @@ shell-dev:
 
 log:
 	docker compose logs -f
+
+seed-clear:
+	npm run seed:clear
