@@ -4,12 +4,14 @@ import { authenticate } from '../middleware/auth.middleware';
 import { CartRepository } from '../repositories/cart.repository';
 import { CartService } from '../services/cart.service';
 import { CartController } from '../controllers/cart.controller';
+import { CartExpiryService } from '../services/cart-expiry.service';
 
 const router = Router();
 
 const cartRepository = new CartRepository();
 const serviceRepository = new ServiceRepository();
-const cartService = new CartService(cartRepository, serviceRepository);
+const cartExpiryService = new CartExpiryService(cartRepository, serviceRepository);
+const cartService = new CartService(cartRepository, serviceRepository, cartExpiryService);
 const cartController = new CartController(cartService);
 
 router.use(authenticate);

@@ -6,11 +6,14 @@ export interface ICartItem {
   slotId: string;
   bookingDate?: Date;
   quantity: number;
+  expiresAt: Date;
 }
 
 export interface ICart extends Document {
   user: mongoose.Types.ObjectId;
   items: ICartItem[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const CartItemSchema = new Schema({
@@ -18,6 +21,7 @@ const CartItemSchema = new Schema({
   slotId: { type: String, required: true },
   bookingDate: { type: Date },
   quantity: { type: Number, required: true, min: 1, default: 1 },
+  expiresAt: { type: Date, required: true },
 });
 
 const CartSchema: Schema = new Schema(
@@ -27,5 +31,7 @@ const CartSchema: Schema = new Schema(
   },
   { timestamps: true },
 );
+
+CartSchema.index({ 'items.expiresAt': 1 });
 
 export default mongoose.model<ICart>('Cart', CartSchema);

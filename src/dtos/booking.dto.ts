@@ -1,16 +1,20 @@
+import { PaymentMethod } from '../types/booking.types';
+
+export interface CheckoutCustomerDto {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 export interface CheckoutDto {
   userId: string;
   userEmail?: string;
-  paymentMethod: 'cash' | 'pay_on_arrival' | 'online';
-  customer?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    country?: string;
-  };
+  paymentMethod: PaymentMethod;
+  customer?: CheckoutCustomerDto;
 }
 
 export interface BookingActionDto {

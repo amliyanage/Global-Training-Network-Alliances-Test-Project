@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import type { LoginDto, RegisterDto } from '../dtos/auth.dto';
 import { AppError } from '../utils/errors';
+import { env } from '../config/env';
 
 export class AuthService {
   constructor(private userRepository: UserRepository) {}
@@ -39,8 +40,8 @@ export class AuthService {
   }
 
   private generateToken(userId: string) {
-    return jwt.sign({ userId }, process.env.JWT_SECRET as string, {
-      expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
+    return jwt.sign({ userId }, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN as any,
     });
   }
 }

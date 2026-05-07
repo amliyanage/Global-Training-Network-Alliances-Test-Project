@@ -6,6 +6,16 @@ import { AppError } from '../utils/errors';
 import { CheckoutDto, BookingActionDto, PayHereNotifyDto } from '../dtos/booking.dto';
 import { getUtcDateKey } from '../utils/date';
 import { PayHereService } from './payhere.service';
+import { env } from '../config/env';
+import {
+  BOOKING_ERROR_CODES,
+  BOOKING_STATUS_TRANSITIONS,
+  NON_DAILY_LIMIT_STATUSES,
+} from '../constants/booking.constants';
+import { BookingStatus } from '../types/booking.types';
+import { BookingStatusAuditRepository } from '../repositories/booking-status-audit.repository';
+import { CartExpiryService } from './cart-expiry.service';
+import { CART_ERROR_CODES } from '../constants/cart.constants';
 
 export class BookingService {
   constructor(
@@ -13,6 +23,8 @@ export class BookingService {
     private cartRepository: CartRepository,
     private serviceRepository: ServiceRepository,
     private payHereService: PayHereService,
+    private bookingStatusAuditRepository: BookingStatusAuditRepository,
+    private cartExpiryService: CartExpiryService,
   ) {}
 
   private getOrderItemsLabel(serviceTitles: string[]): string {
@@ -40,12 +52,9 @@ export class BookingService {
     if (booking.capacityReleasedOnFailure) return;
 
     for (const item of booking.items) {
-      await this.serviceRepository.incrementCapacity(
-        item.serviceId as string,
-        item.slotId,
-        item.quantity,
-        session,
-      );
+      const serviceId = item.serviceId?._id?.toString() || item.serviceId?.toString();
+      if (!serviceId) continue;
+      await this.serviceRepository.incrementCapacity(serviceId, item.slotId, item.quantity, session);
     }
 
     booking.capacityReleasedOnFailure = true;
@@ -59,10 +68,101 @@ export class BookingService {
     return `ORD_${Date.now()}_${bookingId}`;
   }
 
+  private assertValidStatusTransition(currentStatus: BookingStatus, nextStatus: BookingStatus) {
+    if (currentStatus === nextStatus) {
+      return;
+    }
+
+    const allowedStatuses = BOOKING_STATUS_TRANSITIONS[currentStatus] || [];
+    if (allowedStatuses.includes(nextStatus)) {
+      return;
+    }
+
+    throw new AppError(
+      409,
+      `Invalid booking status transition: ${currentStatus} -> ${nextStatus}`,
+      BOOKING_ERROR_CODES.INVALID_STATUS_TRANSITION,
+    );
+  }
+
+  private async transitionStatus(
+    booking: any,
+    newStatus: BookingStatus,
+    session: mongoose.ClientSession,
+    reason?: string,
+  ) {
+    const previousStatus = booking.status as BookingStatus;
+    if (previousStatus === newStatus) return;
+
+    this.assertValidStatusTransition(previousStatus, newStatus);
+
+    booking.status = newStatus;
+
+    await this.bookingStatusAuditRepository.create(
+      {
+        bookingId: booking._id.toString(),
+        userId: booking.user.toString(),
+        previousStatus,
+        newStatus,
+        reason,
+      },
+      session,
+    );
+  }
+
+  private async createInitialStatusAudit(booking: any, session: mongoose.ClientSession, reason: string) {
+    await this.bookingStatusAuditRepository.create(
+      {
+        bookingId: booking._id.toString(),
+        userId: booking.user.toString(),
+        previousStatus: null,
+        newStatus: booking.status,
+        reason,
+      },
+      session,
+    );
+  }
+
+  private normalizeDayRange(date: Date) {
+    const start = new Date(date);
+    start.setUTCHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+
+    return { start, end };
+  }
+
+  private async enforceDailyBookingLimit(
+    userId: string,
+    bookingDateKeys: Set<string>,
+    session: mongoose.ClientSession,
+  ) {
+    for (const dateKey of bookingDateKeys) {
+      const date = new Date(`${dateKey}T00:00:00.000Z`);
+      const { start, end } = this.normalizeDayRange(date);
+
+      const existingCount = await this.bookingRepository.countByUserAndBookingDate(
+        userId,
+        start,
+        end,
+        NON_DAILY_LIMIT_STATUSES,
+        session,
+      );
+
+      if (existingCount >= env.MAX_BOOKINGS_PER_DAY) {
+        throw new AppError(
+          409,
+          `Daily booking limit reached for ${dateKey}. Maximum allowed is ${env.MAX_BOOKINGS_PER_DAY} bookings per day.`,
+          BOOKING_ERROR_CODES.DAILY_LIMIT_REACHED,
+        );
+      }
+    }
+  }
+
   async checkout(dto: CheckoutDto) {
     const { userId, paymentMethod } = dto;
     if (paymentMethod === 'online') {
-      // Validate PayHere env config before we reserve capacity and clear the cart.
       this.payHereService.ensureConfigured();
     }
 
@@ -70,11 +170,14 @@ export class BookingService {
     session.startTransaction();
 
     try {
+      await this.cartExpiryService.cleanupExpiredItemsForUser(userId, session);
+
       const cart: any = await this.cartRepository.findByUserIdPopulated(userId, session);
       if (!cart || cart.items.length === 0) {
-        throw new AppError(400, 'Cart is empty', 'CART_EMPTY');
+        throw new AppError(400, 'Cart is empty', CART_ERROR_CODES.EMPTY);
       }
 
+      const bookingDateKeys = new Set<string>();
       let totalAmount = 0;
       const bookingItems = [];
       const serviceTitles: string[] = [];
@@ -82,38 +185,24 @@ export class BookingService {
       for (const item of cart.items) {
         const serviceId = item.serviceId as any;
         const service: any = await this.serviceRepository.findById(serviceId._id, session);
-        if (!service) throw new AppError(404, `Service not found: ${serviceId._id}`);
+        if (!service) throw new AppError(404, `Service not found: ${serviceId._id}`, 'NOT_FOUND');
 
-        const slot = service.slots.find((s: any) => s._id?.toString() === item.slotId);
-        if (!slot) throw new AppError(404, `Slot not found in service: ${service.title}`);
+        const slot = service.slots.find((candidate: any) => candidate._id?.toString() === item.slotId);
+        if (!slot) throw new AppError(404, `Slot not found in service: ${service.title}`, 'NOT_FOUND');
+
         const bookingDate = item.bookingDate ? new Date(item.bookingDate) : new Date(slot.startTime);
         const cartItemDate = getUtcDateKey(bookingDate);
         const slotDate = getUtcDateKey(new Date(slot.startTime));
+
         if (cartItemDate !== slotDate) {
-          throw new AppError(409, `Selected slot date changed for ${service.title}. Please refresh cart.`);
-        }
-
-        if (slot.capacity < item.quantity) {
           throw new AppError(
             409,
-            `Not enough capacity for ${service.title} at selected slot. Remaining: ${slot.capacity}`,
-            'CAPACITY_ERROR',
+            `Selected slot date changed for ${service.title}. Please refresh cart.`,
+            'SLOT_DATE_CHANGED',
           );
         }
 
-        const updatedService = await this.serviceRepository.decrementCapacity(
-          service._id as string,
-          item.slotId,
-          item.quantity,
-          session,
-        );
-
-        if (!updatedService) {
-          throw new AppError(
-            409,
-            `Concurrency conflict: could not lock capacity for ${service.title}`,
-          );
-        }
+        bookingDateKeys.add(cartItemDate);
 
         totalAmount += service.price * item.quantity;
         serviceTitles.push(service.title);
@@ -125,6 +214,8 @@ export class BookingService {
           priceSnapshot: service.price,
         });
       }
+
+      await this.enforceDailyBookingLimit(userId, bookingDateKeys, session);
 
       const isOnlinePayment = paymentMethod === 'online';
       const booking: any = await this.bookingRepository.create({
@@ -144,6 +235,7 @@ export class BookingService {
       }
 
       await this.bookingRepository.save(booking, session);
+      await this.createInitialStatusAudit(booking, session, 'Booking created from checkout');
 
       cart.items = [];
       await this.cartRepository.save(cart, session);
@@ -182,12 +274,12 @@ export class BookingService {
 
     const statusCode = Number(dto.status_code);
     if (!Number.isFinite(statusCode)) {
-      throw new AppError(400, 'Invalid PayHere notification status code');
+      throw new AppError(400, 'Invalid PayHere notification status code', 'PAYHERE_STATUS_CODE_INVALID');
     }
 
     const normalizedNotifyAmount = this.payHereService.normalizeAmount(dto.payhere_amount);
     if (!normalizedNotifyAmount) {
-      throw new AppError(400, 'Invalid PayHere notification amount');
+      throw new AppError(400, 'Invalid PayHere notification amount', 'PAYHERE_AMOUNT_INVALID');
     }
 
     const session = await mongoose.startSession();
@@ -261,9 +353,13 @@ export class BookingService {
       booking.paymentGateway = 'payhere';
 
       if (statusCode === 2) {
-        // Guard transition: terminal booking statuses should not be downgraded.
         if (!['cancelled', 'failed', 'completed'].includes(booking.status)) {
-          booking.status = 'success';
+          await this.transitionStatus(
+            booking,
+            'confirmed',
+            session,
+            'PayHere payment completed successfully',
+          );
         }
 
         booking.paymentStatus = 'paid';
@@ -282,15 +378,13 @@ export class BookingService {
         if (booking.status === 'cancelled') {
           booking.paymentStatus = 'cancelled';
         } else if (booking.status !== 'completed') {
-          // Ignore stale non-chargeback failures once already paid.
           if (!(booking.paymentStatus === 'paid' && statusCode !== -3)) {
-            booking.status = 'failed';
+            await this.transitionStatus(booking, 'failed', session, 'PayHere payment failed or cancelled');
             booking.paymentStatus = 'failed';
             await this.releaseCapacityForBooking(booking, session);
           }
         }
       } else if (booking.paymentStatus !== 'paid') {
-        // Keep webhook pending state only when not already finalized as paid.
         booking.paymentStatus = 'pending';
       }
 
@@ -313,7 +407,7 @@ export class BookingService {
   async getBookingById(dto: BookingActionDto) {
     const { userId, bookingId } = dto;
     const booking = await this.bookingRepository.findByIdAndUserIdPopulated(bookingId, userId);
-    if (!booking) throw new AppError(404, 'Booking not found');
+    if (!booking) throw new AppError(404, 'Booking not found', 'NOT_FOUND');
     return booking;
   }
 
@@ -328,15 +422,11 @@ export class BookingService {
         userId,
         session,
       );
-      if (!booking) throw new AppError(404, 'Booking not found');
+      if (!booking) throw new AppError(404, 'Booking not found', 'NOT_FOUND');
 
-      if (['success', 'completed', 'failed', 'cancelled'].includes(booking.status)) {
-        throw new AppError(400, `Cannot cancel booking with status ${booking.status}`);
-      }
-
+      await this.transitionStatus(booking, 'cancelled', session, 'Cancelled by user request');
       await this.releaseCapacityForBooking(booking, session);
 
-      booking.status = 'cancelled';
       if (booking.paymentMethod === 'online') {
         booking.paymentStatus = 'cancelled';
       }

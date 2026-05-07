@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { AppError } from '../utils/errors';
 import { PayHereNotifyDto } from '../dtos/booking.dto';
+import { env } from '../config/env';
 
 interface PayHereCheckoutCustomer {
   firstName: string;
@@ -53,11 +54,11 @@ export class PayHereService {
   }
 
   private getConfig(): PayHereConfig {
-    const merchantId = process.env.PAYHERE_MERCHANT_ID;
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
-    const notifyUrl = process.env.PAYHERE_NOTIFY_URL;
-    const returnUrl = process.env.PAYHERE_RETURN_URL;
-    const cancelUrl = process.env.PAYHERE_CANCEL_URL;
+    const merchantId = env.PAYHERE_MERCHANT_ID;
+    const merchantSecret = env.PAYHERE_MERCHANT_SECRET;
+    const notifyUrl = env.PAYHERE_NOTIFY_URL;
+    const returnUrl = env.PAYHERE_RETURN_URL;
+    const cancelUrl = env.PAYHERE_CANCEL_URL;
 
     if (!merchantId || !merchantSecret || !notifyUrl || !returnUrl || !cancelUrl) {
       throw new AppError(
@@ -66,14 +67,14 @@ export class PayHereService {
       );
     }
 
-    const sandbox = (process.env.PAYHERE_SANDBOX || 'true').toLowerCase() !== 'false';
+    const sandbox = (env.PAYHERE_SANDBOX || 'true').toLowerCase() !== 'false';
     const checkoutUrl =
-      process.env.PAYHERE_CHECKOUT_URL ||
+      env.PAYHERE_CHECKOUT_URL ||
       (sandbox
         ? 'https://sandbox.payhere.lk/pay/checkout'
         : 'https://www.payhere.lk/pay/checkout');
 
-    const currency = (process.env.PAYHERE_CURRENCY || 'LKR').toUpperCase();
+    const currency = (env.PAYHERE_CURRENCY || 'LKR').toUpperCase();
 
     return {
       merchantId,

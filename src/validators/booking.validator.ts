@@ -27,6 +27,7 @@ export const checkoutSchema = z
     paymentMethod: z.enum(['cash', 'pay_on_arrival', 'online']),
     customer: customerOptionalSchema,
   })
+  .strict()
   .superRefine((data, ctx) => {
     if (data.paymentMethod !== 'online') return;
 

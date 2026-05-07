@@ -1,4 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import {
+  ALL_BOOKING_STATUSES,
+  ALL_PAYMENT_METHODS,
+  ALL_PAYMENT_STATUSES,
+  BookingStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from '../types/booking.types';
 
 export interface IBooking extends Document {
   user: mongoose.Types.ObjectId;
@@ -10,9 +18,9 @@ export interface IBooking extends Document {
     priceSnapshot: number;
   }[];
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'success' | 'completed' | 'cancelled' | 'failed';
-  paymentMethod: 'cash' | 'pay_on_arrival' | 'online';
-  paymentStatus: 'not_required' | 'pending' | 'paid' | 'failed' | 'cancelled';
+  status: BookingStatus;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   paymentGateway?: 'payhere';
   paymentOrderId?: string;
   paymentId?: string;
@@ -49,13 +57,13 @@ const BookingSchema: Schema = new Schema(
     totalAmount: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'success', 'completed', 'cancelled', 'failed'],
+      enum: ALL_BOOKING_STATUSES,
       default: 'pending',
     },
-    paymentMethod: { type: String, enum: ['cash', 'pay_on_arrival', 'online'], required: true },
+    paymentMethod: { type: String, enum: ALL_PAYMENT_METHODS, required: true },
     paymentStatus: {
       type: String,
-      enum: ['not_required', 'pending', 'paid', 'failed', 'cancelled'],
+      enum: ALL_PAYMENT_STATUSES,
       default: 'pending',
     },
     paymentGateway: { type: String, enum: ['payhere'] },

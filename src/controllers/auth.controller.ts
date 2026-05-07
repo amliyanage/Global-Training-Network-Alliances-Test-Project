@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service';
 import { loginSchema, signupSchema } from '../validators/auth.validator';
+import { sendSuccess } from '../utils/response';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -9,7 +10,7 @@ export class AuthController {
     try {
       const { email, password } = signupSchema.parse(req.body);
       const result = await this.authService.register({ email, passwordPlain: password });
-      res.status(201).json(result);
+      return sendSuccess(res, result, 201, 'User registered successfully');
     } catch (error) {
       next(error);
     }
@@ -19,7 +20,7 @@ export class AuthController {
     try {
       const { email, password } = loginSchema.parse(req.body);
       const result = await this.authService.login({ email, passwordPlain: password });
-      res.status(200).json(result);
+      return sendSuccess(res, result, 200, 'User logged in successfully');
     } catch (error) {
       next(error);
     }
@@ -27,7 +28,7 @@ export class AuthController {
 
   async me(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(200).json({ user: (req as any).user });
+      return sendSuccess(res, { user: req.user }, 200);
     } catch (error) {
       next(error);
     }

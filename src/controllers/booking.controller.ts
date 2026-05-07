@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { BookingService } from '../services/booking.service';
 import { checkoutSchema, payHereNotifySchema } from '../validators/booking.validator';
+import { sendSuccess } from '../utils/response';
 
 export class BookingController {
   constructor(private bookingService: BookingService) {}
@@ -9,12 +10,12 @@ export class BookingController {
     try {
       const { paymentMethod, customer } = checkoutSchema.parse(req.body);
       const booking = await this.bookingService.checkout({
-        userId: (req as any).user._id,
-        userEmail: (req as any).user.email,
+        userId: req.user!._id.toString(),
+        userEmail: req.user?.email,
         paymentMethod,
         customer,
       });
-      res.status(201).json(booking);
+      return sendSuccess(res, booking, 201, 'Checkout completed');
     } catch (error) {
       next(error);
     }
@@ -23,8 +24,8 @@ export class BookingController {
   async payHereNotify(req: Request, res: Response, next: NextFunction) {
     try {
       const dto = payHereNotifySchema.parse(req.body);
-      const result = await this.bookingService.handlePayHereNotify(dto, (req as any).rawBody);
-      res.status(200).json(result);
+      const result = await this.bookingService.handlePayHereNotify(dto, req.rawBody);
+      return sendSuccess(res, result, 200);
     } catch (error) {
       next(error);
     }
@@ -32,8 +33,8 @@ export class BookingController {
 
   async getBookings(req: Request, res: Response, next: NextFunction) {
     try {
-      const bookings = await this.bookingService.getBookings((req as any).user._id);
-      res.status(200).json(bookings);
+      const bookings = await this.bookingService.getBookings(req.user!._id.toString());
+      return sendSuccess(res, bookings, 200);
     } catch (error) {
       next(error);
     }
@@ -42,10 +43,10 @@ export class BookingController {
   async getBookingById(req: Request, res: Response, next: NextFunction) {
     try {
       const booking = await this.bookingService.getBookingById({
-        userId: (req as any).user._id,
+        userId: req.user!._id.toString(),
         bookingId: req.params.id as string,
       });
-      res.status(200).json(booking);
+      return sendSuccess(res, booking, 200);
     } catch (error) {
       next(error);
     }
@@ -54,10 +55,10 @@ export class BookingController {
   async cancelBooking(req: Request, res: Response, next: NextFunction) {
     try {
       const booking = await this.bookingService.cancelBooking({
-        userId: (req as any).user._id,
+        userId: req.user!._id.toString(),
         bookingId: req.params.id as string,
       });
-      res.status(200).json(booking);
+      return sendSuccess(res, booking, 200, 'Booking cancelled');
     } catch (error) {
       next(error);
     }
