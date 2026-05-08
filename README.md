@@ -1,226 +1,132 @@
-# MenteCart Backend
+# Global Training Network Alliances Test Project (MenteCart Backend)
 
-Production-ready TypeScript backend for the **MenteCart** service booking platform.
+## Project Summary
 
-It provides authentication, service catalog browsing, cart-based slot reservation, checkout and bookings, payment webhook handling, and safety controls for concurrency and overbooking.
+This project is a TypeScript + Express backend for a slot-based service booking platform.
 
-## Project Overview
-
-MenteCart supports a service-booking flow where users:
-
-1. Register/login with JWT authentication.
-2. Browse service slots.
-3. Add slot-based items to a cart (capacity is reserved on add).
-4. Checkout bookings (cash/pay-on-arrival/online via PayHere).
-5. Receive strong consistency protections (transactions, status guards, audit logs).
-
-## Architecture
-
-The project follows a layered backend structure:
-
-- `routes`: HTTP route wiring.
-- `controllers`: request parsing + response formatting.
-- `services`: business logic.
-- `repositories`: persistence abstraction for Mongoose operations.
-- `models`: MongoDB schemas.
-- `middleware`: auth, security, request context/logging, error handling.
-- `validators`: request validation with Zod.
-- `dtos/types/constants`: typed contracts and reusable enums/constants.
-
-### Key Design Decisions
-
-- **Transactional consistency**: MongoDB sessions are used for critical operations (cart reservation updates, checkout, cancellation, payment notification processing).
-- **Overbooking prevention**: slot capacity is atomically decremented when cart items are added or quantities are increased.
-- **Cart expiry recovery**: expired cart items are cleaned via background job and their reserved capacity is released.
-- **Status governance**: booking status transitions are explicitly guarded and audited.
-- **Observability**: structured Pino logging with request IDs and centralized error logging.
+Main capabilities:
+- JWT-based auth (`register`, `login`, `me`)
+- Service catalog and slot listing
+- Cart-based slot reservation with expiry cleanup
+- Booking checkout (`cash`, `pay_on_arrival`, `online`)
+- PayHere checkout payload generation + webhook verification
+- Booking status transition guards + audit logging
 
 ## Tech Stack
 
-- Node.js + Express
+- Node.js
 - TypeScript
+- Express 5
 - MongoDB + Mongoose
+- Zod (request validation)
 - JWT + bcrypt
-- Zod validation
-- Pino logging
-- Helmet + CORS + Rate limiting
-- Jest + Supertest (sample API tests)
+- Pino (structured logging)
+- Jest + Supertest (configured, but see limitations)
 - Docker + Docker Compose
+
+## Prerequisites
+
+- Node.js `20+` and npm
+- MongoDB replica set support (transactions are used in cart/booking flows)
+- Optional: Docker + Docker Compose (recommended for quick setup)
+- Optional: PayHere sandbox merchant account for online payment testing
 
 ## Environment Variables
 
-Use `example.env` as template.
+Copy `example.env` to `.env` and adjust values.
 
-| Variable | Description | Default |
-|---|---|---|
-| `NODE_ENV` | Runtime environment | `development` |
-| `PORT` | API port | `6000` |
-| `MONGODB_URI` | Mongo connection string | `mongodb://127.0.0.1:27017/mentecart` |
-| `JWT_SECRET` | JWT signing secret (required) | - |
-| `JWT_EXPIRES_IN` | JWT TTL | `24h` |
-| `LOG_LEVEL` | Pino log level | env-based |
-| `CORS_ORIGINS` | Allowed CORS origins (comma separated or `*`) | `*` |
-| `RATE_LIMIT_WINDOW_MS` | Rate-limit window | `900000` |
-| `RATE_LIMIT_MAX` | Max requests per window | `100` |
-| `MAX_BOOKINGS_PER_DAY` | Daily booking limit per user | `3` |
-| `CART_ITEM_EXPIRY_MINUTES` | Cart item expiration time | `15` |
-| `CART_CLEANUP_INTERVAL_SECONDS` | Background cleanup interval | `60` |
-| `PAYHERE_*` | PayHere checkout/webhook config | optional unless online checkout |
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `NODE_ENV` | No | `development` | `development` / `test` / `production` |
+| `PORT` | No | `6000` | API port |
+| `MONGODB_URI` | No | `mongodb://127.0.0.1:27017/mentecart` | Use replica set URI for transaction support |
+| `JWT_SECRET` | Yes | - | Minimum 10 chars |
+| `JWT_EXPIRES_IN` | No | `24h` | JWT TTL |
+| `LOG_LEVEL` | No | env-based | Auto defaults by env when not set |
+| `CORS_ORIGINS` | No | `*` | Comma-separated origins supported |
+| `RATE_LIMIT_WINDOW_MS` | No | `900000` | 15 min default |
+| `RATE_LIMIT_MAX` | No | `100` | Max requests per window |
+| `MAX_BOOKINGS_PER_DAY` | No | `3` | Per-user daily booking limit |
+| `CART_ITEM_EXPIRY_MINUTES` | No | `15` | Cart reservation expiry |
+| `CART_CLEANUP_INTERVAL_SECONDS` | No | `60` | Background cleanup job interval |
+| `PAYHERE_SANDBOX` | No | `true` | Use sandbox unless set to `false` |
+| `PAYHERE_MERCHANT_ID` | Conditional | - | Needed for online checkout |
+| `PAYHERE_MERCHANT_SECRET` | Conditional | - | Needed for online checkout + signature checks |
+| `PAYHERE_NOTIFY_URL` | Conditional | - | Must be publicly reachable by PayHere |
+| `PAYHERE_RETURN_URL` | Conditional | - | Frontend return URL |
+| `PAYHERE_CANCEL_URL` | Conditional | - | Frontend cancel URL |
+| `PAYHERE_CURRENCY` | No | `LKR` | Uppercased internally |
+| `PAYHERE_CHECKOUT_URL` | No | auto by sandbox/live | Override only if needed |
 
-## Setup Instructions
+`PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET`, `PAYHERE_NOTIFY_URL`, `PAYHERE_RETURN_URL`, and `PAYHERE_CANCEL_URL` must be configured together if online checkout is enabled.
 
-### Local (without Docker)
+## Step-by-Step Run Instructions
+
+### Option A: Local Node.js Run
 
 1. Install dependencies:
    ```bash
    npm install
    ```
-2. Create `.env` from `example.env`.
-3. Start MongoDB with replica-set support (required for transactions).
-4. Run development server:
+2. Create env file:
+   ```bash
+   cp example.env .env
+   ```
+3. Start MongoDB replica set (easiest via Docker):
+   ```bash
+   docker compose up -d mongo mongo-init
+   ```
+4. Seed sample services:
+   ```bash
+   npx tsx src/seed/seed.ts
+   ```
+5. Start API server:
    ```bash
    npm run dev
    ```
+6. Verify health endpoint:
+   ```bash
+   curl http://localhost:6000/health
+   ```
 
-## Docker Instructions
+### Option B: Docker Full Stack
 
-### Development stack
+1. Start dev stack (hot reload):
+   ```bash
+   make dev
+   ```
+2. API: `http://localhost:6000`
+3. Mongo Express: `http://localhost:6060` (`admin` / `pass`)
+4. Stop services:
+   ```bash
+   make down
+   ```
 
-```bash
-make dev
-```
+## Test Card Numbers Used
 
-### Production-style container stack
+The backend never stores or processes raw card numbers directly; card input happens on PayHere-hosted checkout pages.  
+For manual PayHere sandbox checkout testing, use PayHere’s published sandbox test cards:
 
-```bash
-make up
-```
+Successful simulated payments:
+- Visa: `4916217501611292`
+- MasterCard: `5307732125531191`
+- AMEX: `346781005510225`
 
-### Detached mode
+Decline simulation cards (examples):
+- Insufficient Funds (Visa): `4024007194349121`
+- Limit Exceeded (Visa): `4929119799365646`
+- Do Not Honor (Visa): `4929768900837248`
+- Network Error (Visa): `4024007120869333`
 
-```bash
-make up-f
-```
+For expiry date, CVV, and name fields, enter any valid values in sandbox mode.
 
-### Stop containers
-
-```bash
-make down
-```
-
-## API Overview
-
-### Auth
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /auth/me`
-
-### Services
-
-- `GET /services`
-- `GET /services/:id`
-
-### Cart
-
-- `GET /cart`
-- `POST /cart/items`
-- `PATCH /cart/items/:itemId`
-- `DELETE /cart/items/:itemId`
-
-### Bookings
-
-- `POST /bookings/checkout`
-- `GET /bookings`
-- `GET /bookings/:id`
-- `POST /bookings/:id/cancel`
-- `POST /bookings/payhere/notify`
-
-### Response Format
-
-Successful responses:
-
-```json
-{
-  "status": "success",
-  "data": {},
-  "requestId": "...",
-  "timestamp": "..."
-}
-```
-
-Error responses:
-
-```json
-{
-  "status": "error",
-  "errorCode": "...",
-  "message": "...",
-  "requestId": "...",
-  "path": "...",
-  "timestamp": "..."
-}
-```
-
-## Booking Rules Implemented
-
-- Daily booking limit per user (`MAX_BOOKINGS_PER_DAY`, default 3).
-- Cart item auto-expiry (`CART_ITEM_EXPIRY_MINUTES`, default 15).
-- Expired cart item cleanup releases reserved capacity.
-- Status transition guards:
-  - `pending -> confirmed`
-  - `confirmed -> completed`
-  - `pending -> cancelled`
-  - `pending -> failed`
-- Invalid transitions return conflict errors.
-- Every status change is logged in `BookingStatusAuditLog`.
-
-## Testing
-
-Run tests:
-
-```bash
-npm test
-```
-
-Current sample suite covers:
-
-- Auth register/login route behavior
-- Cart item addition route behavior
-- Booking checkout route behavior
-- Overbooking conflict behavior
-
-## Postman Usage
-
-1. Import `postman_collection.json`.
-2. Set collection variables/environment values:
-   - `baseUrl`
-   - `token` (after login)
-3. Run auth flow first, then cart/booking endpoints.
-
-## Project Structure
-
-```text
-src/
-  config/
-  constants/
-  controllers/
-  dtos/
-  jobs/
-  middleware/
-  models/
-  repositories/
-  routes/
-  services/
-  tests/
-  types/
-  utils/
-  validators/
-```
+Reference: https://support.payhere.lk/sandbox-and-testing
 
 ## Known Limitations
 
-- No dedicated admin workflow for manually moving bookings to `completed` yet.
-- No dedicated retry strategy for transient Mongo transaction errors.
-- No OpenAPI/Swagger spec included yet.
-- Sample tests focus on API route behavior; full E2E DB-backed suites can be expanded further.
+- `npm run seed` and `npm run seed:clear` currently point to non-existent paths (`src/seed.ts`, `src/seed.clear.ts`); use:
+  - `npx tsx src/seed/seed.ts`
+  - `npx tsx src/seed/seed.clear.ts`
+- `npm test` currently fails because `jest.config.js` points to `src/tests`, but that directory is not present and no `*.test.ts` files exist.
+- Online payment callback testing requires a public `PAYHERE_NOTIFY_URL` (localhost alone is not enough for live webhook delivery).
+- No OpenAPI/Swagger spec is included yet.
