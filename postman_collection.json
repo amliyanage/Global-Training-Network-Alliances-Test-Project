@@ -1,0 +1,2978 @@
+{
+  "info": {
+    "_postman_id": "c741f909-36d3-4d57-b56e-c0d0414dd7e6",
+    "name": "MenteCart Backend API - Full Validation & Scenario Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Comprehensive Postman suite for MenteCart backend covering success flows, validation failures, conflict cases, booking status guards, cart expiry checks, and PayHere notification scenarios."
+  },
+  "item": [
+    {
+      "name": "Health Check - 200",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const json = pm.response.json();",
+              "pm.expect(json.status).to.eql('success');",
+              "pm.expect(json.data).to.be.an(\"object\");",
+              "pm.expect(json.data.status).to.eql('ok');",
+              "pm.expect(json.requestId).to.be.a(\"string\");",
+              "pm.expect(json.timestamp).to.be.a(\"string\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register - Success (201)",
+          "description": "Creates a fresh user on every run by generating a random email.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uniqueEmail = `qa_${Date.now()}_${Math.floor(Math.random() * 10000)}@example.com`;",
+                  "pm.collectionVariables.set(\"test_user_email\", uniqueEmail);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.user.email).to.eql(pm.collectionVariables.get(\"test_user_email\"));",
+                  "pm.expect(json.data.token).to.be.a(\"string\");",
+                  "pm.collectionVariables.set(\"auth_token\", json.data.token);",
+                  "pm.collectionVariables.set(\"user_id\", json.data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Duplicate Email (409)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(409);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('error');",
+                  "pm.expect(json.errorCode).to.eql('CONFLICT');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Invalid Email (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalid-email-format\",\n  \"password\": \"{{test_user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');",
+                  "pm.expect(json.errors).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Weak Password (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"weakpass@example.com\",\n  \"password\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Success (200)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.token).to.be.a(\"string\");",
+                  "pm.collectionVariables.set(\"auth_token\", json.data.token);",
+                  "pm.collectionVariables.set(\"user_id\", json.data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Wrong Password (401)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(401);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('UNAUTHORIZED');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Invalid Email Format (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bad-email\",\n  \"password\": \"{{test_user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User - Success (200)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.user.email).to.eql(pm.collectionVariables.get(\"test_user_email\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User - Missing Token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(401);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('UNAUTHORIZED');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "List Services - Success (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services?page=1&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.data).to.be.an(\"array\");",
+                  "if (json.data.data.length > 0) {",
+                  "  pm.collectionVariables.set(\"service_id\", json.data.data[0]._id);",
+                  "  pm.collectionVariables.set(\"service_title\", json.data.data[0].title);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Services - Filtered (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services?page=1&limit=5&category=Cleaning&title=Clean",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "category",
+                  "value": "Cleaning"
+                },
+                {
+                  "key": "title",
+                  "value": "Clean"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data).to.have.property(\"hasMore\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Service by ID - Success & Capture Slot (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "{{service_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data._id).to.eql(pm.collectionVariables.get(\"service_id\"));",
+                  "const slots = json.data.slots || [];",
+                  "pm.expect(slots.length).to.be.greaterThan(0);",
+                  "const availableSlot = slots.find((slot) => Number(slot.capacity) > 0) || slots[0];",
+                  "pm.collectionVariables.set(\"slot_id\", availableSlot._id);",
+                  "pm.collectionVariables.set(\"booking_date\", String(availableSlot.startTime).slice(0, 10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Service by ID - With bookingDate Filter (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}?bookingDate={{booking_date}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "{{service_id}}"
+              ],
+              "query": [
+                {
+                  "key": "bookingDate",
+                  "value": "{{booking_date}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Service by ID - Invalid bookingDate (400 Validation)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}?bookingDate=07-05-2026",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "{{service_id}}"
+              ],
+              "query": [
+                {
+                  "key": "bookingDate",
+                  "value": "07-05-2026"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Service by ID - Not Found (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/{{fake_service_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "{{fake_service_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(404);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('NOT_FOUND');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "Get Cart - Success (200)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cart",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.items).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Success & Capture cart_item_id (200)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "const items = json.data.items || [];",
+                  "pm.expect(items.length).to.be.greaterThan(0);",
+                  "const captured = items.find((item) => item.slotId === pm.collectionVariables.get(\"slot_id\")) || items[0];",
+                  "pm.collectionVariables.set(\"cart_item_id\", captured._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Unauthorized (401)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(401);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('UNAUTHORIZED');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Invalid serviceId format (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"bad-id\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Invalid slotId format (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"bad-slot-id\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Invalid bookingDate format (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"07-05-2026\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Invalid quantity (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Service Not Found (404)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{fake_service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(404);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('NOT_FOUND');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Invalid Slot for Service (400)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{fake_slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.message).to.match(/Invalid time slot/i);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Item - Capacity Exceeded (409)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 99999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(409);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('CAPACITY_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Cart Item - Success (200)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items/{{cart_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{cart_item_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Cart Item - Invalid Quantity (400 Validation)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items/{{cart_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{cart_item_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Cart Item - Item Not Found (404)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items/{{fake_cart_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{fake_cart_item_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(404);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('NOT_FOUND');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Cart Item - Item Not Found (404)",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cart/items/{{fake_cart_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{fake_cart_item_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(404);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('NOT_FOUND');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Cart Item - Success (200)",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cart/items/{{cart_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{cart_item_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cart Expiry Scenario - Start (Add Item)",
+          "description": "Run this request, wait 16 minutes (CART_ITEM_EXPIRY_MINUTES=15), then run \"Cart Expiry Scenario - Verify\" to validate cleanup + released capacity.",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "pm.collectionVariables.set(\"expiry_started_at\", String(Date.now()));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cart Expiry Scenario - Verify (Manual After 16m)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cart",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "const startedAt = Number(pm.collectionVariables.get(\"expiry_started_at\") || 0);",
+                  "if (!startedAt || Date.now() - startedAt < 15 * 60 * 1000) {",
+                  "  console.warn(\"Run this request at least 15 minutes after the start step to validate expiry cleanup.\");",
+                  "} else {",
+                  "  const trackedSlot = pm.collectionVariables.get(\"slot_id\");",
+                  "  const expiredItemStillPresent = (json.data.items || []).some((i) => i.slotId === trackedSlot);",
+                  "  pm.expect(expiredItemStillPresent).to.eql(false);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Cart - Success (After Operations)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cart",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.items).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Prepare Cart - For Cash Checkout",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Cash Success (201)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.status).to.eql(\"confirmed\");",
+                  "pm.collectionVariables.set(\"booking_id\", json.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Empty Cart (400 CART_EMPTY)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('CART_EMPTY');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prepare Cart - For Online Validation",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Online Missing Customer (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"online\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Invalid paymentMethod (400 Validation)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"card\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Daily Limit Scenario (Run Repeatedly Until 409)",
+          "description": "Run this request repeatedly (with cart prep before each run) on the same booking_date to trigger DAILY_LIMIT_REACHED once MAX_BOOKINGS_PER_DAY is exceeded.",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect([201, 409]).to.include(pm.response.code);",
+                  "const json = pm.response.json();",
+                  "if (pm.response.code === 409) {",
+                  "  pm.expect(json.errorCode).to.eql('DAILY_LIMIT_REACHED');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prepare Cart - For Online Checkout Success",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Online Success (201 Pending + PaymentSession)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"online\",\n  \"customer\": {\n    \"firstName\": \"{{customer_first_name}}\",\n    \"lastName\": \"{{customer_last_name}}\",\n    \"email\": \"{{customer_email}}\",\n    \"phone\": \"{{customer_phone}}\",\n    \"address\": \"{{customer_address}}\",\n    \"city\": \"{{customer_city}}\",\n    \"country\": \"{{customer_country}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(201);",
+                  "const json = pm.response.json();",
+                  "const data = json.data || {};",
+                  "const booking = data.booking || data;",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(booking.status).to.eql(\"pending\");",
+                  "pm.collectionVariables.set(\"booking_id\", booking._id);",
+                  "pm.collectionVariables.set(\"online_booking_id\", booking._id);",
+                  "if (booking.paymentOrderId) pm.collectionVariables.set(\"payment_order_id\", booking.paymentOrderId);",
+                  "if (booking.totalAmount !== undefined) pm.collectionVariables.set(\"payhere_amount\", Number(booking.totalAmount).toFixed(2));",
+                  "if (data.paymentSession && data.paymentSession.payload) {",
+                  "  const payload = data.paymentSession.payload;",
+                  "  if (payload.order_id) pm.collectionVariables.set(\"payment_order_id\", payload.order_id);",
+                  "  if (payload.amount) pm.collectionVariables.set(\"payhere_amount\", payload.amount);",
+                  "  if (payload.custom_1) pm.collectionVariables.set(\"online_booking_id\", payload.custom_1);",
+                  "  if (payload.custom_2) pm.collectionVariables.set(\"user_id\", payload.custom_2);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayHere Notify - Success (200 Processed)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "merchant_id",
+                  "value": "{{payhere_merchant_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "order_id",
+                  "value": "{{payment_order_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payment_id",
+                  "value": "{{payhere_payment_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_amount",
+                  "value": "{{payhere_amount}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_currency",
+                  "value": "{{payhere_currency}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_code",
+                  "value": "{{payhere_status_code}}",
+                  "type": "text"
+                },
+                {
+                  "key": "md5sig",
+                  "value": "{{payhere_md5sig}}",
+                  "type": "text"
+                },
+                {
+                  "key": "method",
+                  "value": "{{payhere_method}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_message",
+                  "value": "{{payhere_status_message}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_1",
+                  "value": "{{online_booking_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_2",
+                  "value": "{{user_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/payhere/notify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "payhere",
+                "notify"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const merchantId = pm.collectionVariables.get(\"payhere_merchant_id\");",
+                  "const merchantSecret = pm.collectionVariables.get(\"payhere_merchant_secret\");",
+                  "const orderId = pm.collectionVariables.get(\"payment_order_id\");",
+                  "const amountRaw = pm.collectionVariables.get(\"payhere_amount\");",
+                  "const currency = (pm.collectionVariables.get(\"payhere_currency\") || \"LKR\").toUpperCase();",
+                  "const statusCode = pm.collectionVariables.get(\"payhere_status_code\") || \"2\";",
+                  "",
+                  "if (!merchantId || !merchantSecret || !orderId || !amountRaw) {",
+                  "  throw new Error(\"Missing PayHere variables: payhere_merchant_id, payhere_merchant_secret, payment_order_id, payhere_amount\");",
+                  "}",
+                  "",
+                  "const amount = Number(amountRaw).toFixed(2);",
+                  "pm.collectionVariables.set(\"payhere_amount\", amount);",
+                  "pm.collectionVariables.set(\"payhere_currency\", currency);",
+                  "",
+                  "const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();",
+                  "const sig = CryptoJS.MD5(`${merchantId}${orderId}${amount}${currency}${statusCode}${hashedSecret}`).toString().toUpperCase();",
+                  "pm.collectionVariables.set(\"payhere_md5sig\", sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.acknowledged).to.eql(true);",
+                  "pm.expect(json.data.processed).to.eql(true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayHere Notify - Duplicate Notification (200)",
+          "description": "Run after a successful PayHere Notify request using the same payload.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "merchant_id",
+                  "value": "{{payhere_merchant_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "order_id",
+                  "value": "{{payment_order_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payment_id",
+                  "value": "{{payhere_payment_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_amount",
+                  "value": "{{payhere_amount}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_currency",
+                  "value": "{{payhere_currency}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_code",
+                  "value": "{{payhere_status_code}}",
+                  "type": "text"
+                },
+                {
+                  "key": "md5sig",
+                  "value": "{{payhere_md5sig}}",
+                  "type": "text"
+                },
+                {
+                  "key": "method",
+                  "value": "{{payhere_method}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_message",
+                  "value": "{{payhere_status_message}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_1",
+                  "value": "{{online_booking_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_2",
+                  "value": "{{user_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/payhere/notify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "payhere",
+                "notify"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const merchantId = pm.collectionVariables.get(\"payhere_merchant_id\");",
+                  "const merchantSecret = pm.collectionVariables.get(\"payhere_merchant_secret\");",
+                  "const orderId = pm.collectionVariables.get(\"payment_order_id\");",
+                  "const amountRaw = pm.collectionVariables.get(\"payhere_amount\");",
+                  "const currency = (pm.collectionVariables.get(\"payhere_currency\") || \"LKR\").toUpperCase();",
+                  "const statusCode = pm.collectionVariables.get(\"payhere_status_code\") || \"2\";",
+                  "",
+                  "if (!merchantId || !merchantSecret || !orderId || !amountRaw) {",
+                  "  throw new Error(\"Missing PayHere variables: payhere_merchant_id, payhere_merchant_secret, payment_order_id, payhere_amount\");",
+                  "}",
+                  "",
+                  "const amount = Number(amountRaw).toFixed(2);",
+                  "pm.collectionVariables.set(\"payhere_amount\", amount);",
+                  "pm.collectionVariables.set(\"payhere_currency\", currency);",
+                  "",
+                  "const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();",
+                  "const sig = CryptoJS.MD5(`${merchantId}${orderId}${amount}${currency}${statusCode}${hashedSecret}`).toString().toUpperCase();",
+                  "pm.collectionVariables.set(\"payhere_md5sig\", sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.data.acknowledged).to.eql(true);",
+                  "pm.expect(json.data.processed).to.eql(false);",
+                  "pm.expect(json.data.reason).to.eql(\"DUPLICATE_NOTIFICATION\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayHere Notify - Invalid Signature (400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "merchant_id",
+                  "value": "{{payhere_merchant_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "order_id",
+                  "value": "{{payment_order_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payment_id",
+                  "value": "{{payhere_payment_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_amount",
+                  "value": "{{payhere_amount}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_currency",
+                  "value": "{{payhere_currency}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_code",
+                  "value": "{{payhere_status_code}}",
+                  "type": "text"
+                },
+                {
+                  "key": "md5sig",
+                  "value": "INVALID_SIGNATURE",
+                  "type": "text"
+                },
+                {
+                  "key": "method",
+                  "value": "{{payhere_method}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_message",
+                  "value": "{{payhere_status_message}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_1",
+                  "value": "{{online_booking_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_2",
+                  "value": "{{user_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/payhere/notify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "payhere",
+                "notify"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(400);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('PAYHERE_SIGNATURE_INVALID');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PayHere Notify - Amount Mismatch (200 Not Processed)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "merchant_id",
+                  "value": "{{payhere_merchant_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "order_id",
+                  "value": "{{payment_order_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payment_id",
+                  "value": "{{payhere_payment_id_mismatch}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_amount",
+                  "value": "{{payhere_amount_mismatch}}",
+                  "type": "text"
+                },
+                {
+                  "key": "payhere_currency",
+                  "value": "{{payhere_currency}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_code",
+                  "value": "{{payhere_status_code}}",
+                  "type": "text"
+                },
+                {
+                  "key": "md5sig",
+                  "value": "{{payhere_md5sig}}",
+                  "type": "text"
+                },
+                {
+                  "key": "method",
+                  "value": "{{payhere_method}}",
+                  "type": "text"
+                },
+                {
+                  "key": "status_message",
+                  "value": "{{payhere_status_message}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_1",
+                  "value": "{{online_booking_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "custom_2",
+                  "value": "{{user_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/payhere/notify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "payhere",
+                "notify"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const merchantId = pm.collectionVariables.get(\"payhere_merchant_id\");",
+                  "const merchantSecret = pm.collectionVariables.get(\"payhere_merchant_secret\");",
+                  "const orderId = pm.collectionVariables.get(\"payment_order_id\");",
+                  "const amount = Number(pm.collectionVariables.get(\"payhere_amount_mismatch\") || \"0.01\").toFixed(2);",
+                  "const currency = (pm.collectionVariables.get(\"payhere_currency\") || \"LKR\").toUpperCase();",
+                  "const statusCode = pm.collectionVariables.get(\"payhere_status_code\") || \"2\";",
+                  "pm.collectionVariables.set(\"payhere_amount_mismatch\", amount);",
+                  "const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();",
+                  "const sig = CryptoJS.MD5(`${merchantId}${orderId}${amount}${currency}${statusCode}${hashedSecret}`).toString().toUpperCase();",
+                  "pm.collectionVariables.set(\"payhere_md5sig\", sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.data.acknowledged).to.eql(true);",
+                  "pm.expect(json.data.processed).to.eql(false);",
+                  "pm.expect(json.data.reason).to.eql(\"AMOUNT_OR_CURRENCY_MISMATCH\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Bookings - Success (200)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data).to.be.an(\"array\");",
+                  "if (json.data.length > 0) pm.collectionVariables.set(\"booking_id\", json.data[0]._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Booking by ID - Success (200)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings/{{booking_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "{{booking_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data._id).to.eql(pm.collectionVariables.get(\"booking_id\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Booking by ID - Not Found (404)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings/{{fake_booking_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "{{fake_booking_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(404);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('NOT_FOUND');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prepare Cart - For Pending Booking Cancellation",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"bookingDate\": \"{{booking_date}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/cart/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout - Online Pending for Cancel Flow (201)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"online\",\n  \"customer\": {\n    \"firstName\": \"{{customer_first_name}}\",\n    \"lastName\": \"{{customer_last_name}}\",\n    \"email\": \"{{customer_email}}\",\n    \"phone\": \"{{customer_phone}}\",\n    \"address\": \"{{customer_address}}\",\n    \"city\": \"{{customer_city}}\",\n    \"country\": \"{{customer_country}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bookings/checkout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "checkout"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(201);",
+                  "const json = pm.response.json();",
+                  "const booking = (json.data && json.data.booking) ? json.data.booking : json.data;",
+                  "pm.expect(booking.status).to.eql(\"pending\");",
+                  "pm.collectionVariables.set(\"cancel_target_booking_id\", booking._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Booking - Success (pending -> cancelled)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings/{{cancel_target_booking_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "{{cancel_target_booking_id}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('success');",
+                  "pm.expect(json.data.status).to.eql(\"cancelled\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Booking - Invalid Transition (409)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings/{{cancel_target_booking_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings",
+                "{{cancel_target_booking_id}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(409);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('INVALID_STATUS_TRANSITION');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Bookings - Unauthorized (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(401);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.errorCode).to.eql('UNAUTHORIZED');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:6001",
+      "type": "string"
+    },
+    {
+      "key": "base_url_dev",
+      "value": "http://localhost:6000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_user_email",
+      "value": "qa_user@example.com",
+      "type": "string"
+    },
+    {
+      "key": "test_user_password",
+      "value": "Password123!",
+      "type": "string"
+    },
+    {
+      "key": "service_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "service_title",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "slot_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "booking_date",
+      "value": "2026-05-08",
+      "type": "string"
+    },
+    {
+      "key": "cart_item_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "booking_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "online_booking_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancel_target_booking_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payment_order_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payhere_amount",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expiry_started_at",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fake_service_id",
+      "value": "507f1f77bcf86cd799439099",
+      "type": "string"
+    },
+    {
+      "key": "fake_slot_id",
+      "value": "507f1f77bcf86cd799439098",
+      "type": "string"
+    },
+    {
+      "key": "fake_cart_item_id",
+      "value": "507f1f77bcf86cd799439097",
+      "type": "string"
+    },
+    {
+      "key": "fake_booking_id",
+      "value": "507f1f77bcf86cd799439096",
+      "type": "string"
+    },
+    {
+      "key": "large_quantity",
+      "value": "99999",
+      "type": "string"
+    },
+    {
+      "key": "payhere_merchant_id",
+      "value": "1211142",
+      "type": "string"
+    },
+    {
+      "key": "payhere_merchant_secret",
+      "value": "replace_with_your_merchant_secret",
+      "type": "string"
+    },
+    {
+      "key": "payhere_currency",
+      "value": "LKR",
+      "type": "string"
+    },
+    {
+      "key": "payhere_status_code",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "payhere_method",
+      "value": "VISA",
+      "type": "string"
+    },
+    {
+      "key": "payhere_status_message",
+      "value": "Successfully completed payment",
+      "type": "string"
+    },
+    {
+      "key": "payhere_payment_id",
+      "value": "320025071278",
+      "type": "string"
+    },
+    {
+      "key": "payhere_payment_id_mismatch",
+      "value": "320025071279",
+      "type": "string"
+    },
+    {
+      "key": "payhere_amount_mismatch",
+      "value": "0.01",
+      "type": "string"
+    },
+    {
+      "key": "payhere_md5sig",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_first_name",
+      "value": "Saman",
+      "type": "string"
+    },
+    {
+      "key": "customer_last_name",
+      "value": "Perera",
+      "type": "string"
+    },
+    {
+      "key": "customer_email",
+      "value": "test@example.com",
+      "type": "string"
+    },
+    {
+      "key": "customer_phone",
+      "value": "0771234567",
+      "type": "string"
+    },
+    {
+      "key": "customer_address",
+      "value": "No.1, Galle Road",
+      "type": "string"
+    },
+    {
+      "key": "customer_city",
+      "value": "Colombo",
+      "type": "string"
+    },
+    {
+      "key": "customer_country",
+      "value": "Sri Lanka",
+      "type": "string"
+    }
+  ]
+}

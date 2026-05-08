@@ -1,0 +1,120 @@
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mentecart-mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    healthcheck:
+      test: mongosh --port 27017 --quiet --eval "db.hello().isWritablePrimary || db.isMaster().ismaster"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  mongo-init:
+    image: mongo:latest
+    container_name: mentecart-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy # wait until MongoDB is healthy, not just started
+    restart: 'no'
+    entrypoint: >
+      bash -c "
+        mongosh --host mongo:27017 --quiet --eval '
+          try { rs.status() } catch(e) { rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongo:27017\" }] }) }
+        ' &&
+        echo 'Replica set initialized'
+      "
+
+  # ── Development service (hot-reload via nodemon + tsx) ──────────────────────
+  backend-dev:
+    build:
+      context: .
+      target: dev
+    container_name: mentecart-backend-dev
+    ports:
+      - '6000:6000'
+    volumes:
+      - ./src:/app/src # live-reload source changes
+      - ./tsconfig.json:/app/tsconfig.json
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      - NODE_ENV=development
+      - PORT=6000
+      - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
+      - JWT_SECRET=mentecart_secret_key_123
+      - JWT_EXPIRES_IN=24h
+      - LOG_LEVEL=debug
+      - CORS_ORIGINS=*
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX=100
+      - MAX_BOOKINGS_PER_DAY=3
+      - CART_ITEM_EXPIRY_MINUTES=15
+      - CART_CLEANUP_INTERVAL_SECONDS=60
+      - PAYHERE_SANDBOX=${PAYHERE_SANDBOX:-true}
+      - PAYHERE_MERCHANT_ID=${PAYHERE_MERCHANT_ID:-1211142}
+      - PAYHERE_MERCHANT_SECRET=${PAYHERE_MERCHANT_SECRET:-replace_with_your_merchant_secret}
+      - PAYHERE_NOTIFY_URL=${PAYHERE_NOTIFY_URL:-https://your-public-domain.com/bookings/payhere/notify}
+      - PAYHERE_RETURN_URL=${PAYHERE_RETURN_URL:-https://your-frontend.com/payment/return}
+      - PAYHERE_CANCEL_URL=${PAYHERE_CANCEL_URL:-https://your-frontend.com/payment/cancel}
+      - PAYHERE_CURRENCY=${PAYHERE_CURRENCY:-LKR}
+
+  # ── Production service (compiled dist) ─────────────────────────────────────
+  backend:
+    build:
+      context: .
+      target: prod
+    container_name: mentecart-backend
+    ports:
+      - '6001:6000'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      - NODE_ENV=production
+      - PORT=6000
+      - MONGODB_URI=mongodb://mongo:27017/mentecart?replicaSet=rs0
+      - JWT_SECRET=mentecart_secret_key_123
+      - JWT_EXPIRES_IN=24h
+      - LOG_LEVEL=info
+      - CORS_ORIGINS=*
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX=100
+      - MAX_BOOKINGS_PER_DAY=3
+      - CART_ITEM_EXPIRY_MINUTES=15
+      - CART_CLEANUP_INTERVAL_SECONDS=60
+      - PAYHERE_SANDBOX=${PAYHERE_SANDBOX:-true}
+      - PAYHERE_MERCHANT_ID=${PAYHERE_MERCHANT_ID:-1211142}
+      - PAYHERE_MERCHANT_SECRET=${PAYHERE_MERCHANT_SECRET:-replace_with_your_merchant_secret}
+      - PAYHERE_NOTIFY_URL=${PAYHERE_NOTIFY_URL:-https://your-public-domain.com/bookings/payhere/notify}
+      - PAYHERE_RETURN_URL=${PAYHERE_RETURN_URL:-https://your-frontend.com/payment/return}
+      - PAYHERE_CANCEL_URL=${PAYHERE_CANCEL_URL:-https://your-frontend.com/payment/cancel}
+      - PAYHERE_CURRENCY=${PAYHERE_CURRENCY:-LKR}
+
+  # ── Database Preview (Mongo Express) ───────────────────────────────────────
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mentecart-mongo-express
+    ports:
+      - '6060:8081'
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
