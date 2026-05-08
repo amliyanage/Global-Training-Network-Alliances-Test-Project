@@ -11,7 +11,7 @@ export interface IService extends Document {
   title: string;
   description: string;
   price: number;
-  duration: number; // in minutes
+  duration: number;
   category: string;
   image: string;
   capacityPerSlot: number;

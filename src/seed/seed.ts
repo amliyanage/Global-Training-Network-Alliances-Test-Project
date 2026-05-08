@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Service from './models/Service';
+import Service from '../models/Service';
 
-// Load environment variables
 dotenv.config();
 
 const MONGODB_URI = (process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mentecart')
